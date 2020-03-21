@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  mariadb:
+    container_name: mariadb
+    image: 'bitnami/mariadb:10.3'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_DATABASE=myapp
+
+  express:
+    tty: true # Enables debugging capabilities when attached to this container.
+    container_name: backend
+    image: bitnami/express:4
+    command: npm run development
+    environment:
+      - PORT=3011
+      - NODE_ENV=development
+      - DATABASE_URL=mysql://root@mariadb/myapp
+
+      - SKIP_DB_WAIT=0
+      - SKIP_DB_MIGRATION=0
+      - SKIP_NPM_INSTALL=0
+      - SKIP_BOWER_INSTALL=0
+    depends_on:
+      - mariadb
+    ports:
+      - 3011:3000
+    volumes:
+      - .:/app
