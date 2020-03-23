@@ -14,7 +14,7 @@ services:
     image: bitnami/express:4
     command: npm run development
     environment:
-      - PORT=3011
+      - PORT=3000
       - NODE_ENV=development
       - DATABASE_URL=mysql://root@mariadb/myapp
 
@@ -25,6 +25,6 @@ services:
     depends_on:
       - mariadb
     ports:
-      - 3011:3000
+      - 3000:3000
     volumes:
       - .:/app

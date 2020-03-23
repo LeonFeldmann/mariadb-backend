@@ -29,14 +29,53 @@ app.use('/users', usersRouter);
 
 var url = process.env.DATABASE_URL;
 
-var connection = mysql.createConnection(url);
-connection.connect(function(err) {
+var db = mysql.createConnection(url);
+db.connect(function(err) {
   assert.equal(null, err);
   console.log("Connected correctly to mariadb");
-  connection.query('SHOW TABLES;');
-  connection.end();
+  db.query('SHOW TABLES;');
+
+  // db.end();
 });
 
+
+app.get("/createTable", (req, res) => {
+  // create table
+  var table = 'CREATE TABLE test(title VARCHAR(255), text VARCHAR(255), id int AUTO_INCREMENT, PRIMARY KEY (id))';
+  db.query(table, (err, result) => {
+    if (err) 
+      console.log(err)
+    console.log(result);
+    res.send("test table created");
+  });
+});
+
+app.get("/fillTable", (req, res) => {
+ // fill table
+  var query = 'INSERT INTO test SET ?';
+  var tableContent = {title:'test-title', text:'test-text'};
+  db.query(query, tableContent, (err, result) => {
+    if (err) 
+      console.log(err)
+    console.log(result);
+    res.send("one entry in test has been made");
+  });
+
+});
+
+app.get("/queryTable", (req, res) => {
+  // query table
+   var query = 'SELECT * FROM test';
+   db.query(query, (err, result) => {
+     if (err)
+       console.log(err)
+     console.log(result);
+     res.send("These results have been fetched: \n" + JSON.stringify(result));
+   });
+  
+   
+ });
+ 
 
 
 
