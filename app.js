@@ -82,26 +82,63 @@ async function initializeDatabaseSchema(conn) {
 
 
   // define database schema
-  var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, quantity int, description VARCHAR(255), vintage int, location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
+  var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, description VARCHAR(255), vintage int, location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
 
-  var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), telefone VARCHAR(255), email VARCHAR(255), addressID int, PRIMARY KEY (customerID), FOREIGN KEY (addressID) REFERENCES address(addressID));`;
+  var addressTable = `CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));`;
 
-  var customerAddressTable = `CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));`;
+  var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), PRIMARY KEY (customerID), FOREIGN KEY (addressID) REFERENCES address(addressID));`;
 
   var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (addressID) REFERENCES address(addressID));`;
 
-  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, FOREIGN KEY (wineID) REFERENCES wine(wineID), FOREIGN KEY (customerID) REFERENCES customer(customerID), quantity int, date string, PRIMARY KEY (transactionID));`;
+  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (customerID) REFERENCES customer (customerID), quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
 
-  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, FOREIGN KEY (wineID) REFERENCES wine(wineID), FOREIGN KEY (winemakerID) REFERENCES winemaker(winemakerID), PRIMARY KEY (offerID));`;
+  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID), PRIMARY KEY (offerID));`;
 
 try {
 
   // initialize database schema
   await conn.query(wineTable);
-  await conn.query(customerAddressTable);
+  await conn.query(addressTable);
   await conn.query(customerTable);
   await conn.query(winemakerTable);
- 
+  await conn.query(customer_buys_wineTable)
+  await conn.query(winemaker_offers_wineTable)
+
+  // fill table with test values
+  var wineInsertionQuery = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `;
+  var wine1Values = `('reserva especial de la mancha', 10, 'This wine is very tasty', '2000', 'upper Hills', 'Spain', 'la mancha', 5.0, 9.99, '1AA', 'N/A')`;
+  var wine2Values = `('renault peugeot baguette', 20, 'Also a very tasty wine', '2007', 'field', 'France', 'bordeaux', 3.0, 7.99, '1AB', 'N/A')`;
+  await conn.query(wineInsertionQuery + wine1Values + ',' + wine2Values + ';');
+
+
+  var addressInsertionQuery = `INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES `;
+  var dummyAddress1 = `('Deutschland', 40807, 'Berlin', 'Am Bunker', '8')`;
+  var dummyAddress2 = `('Deutschland', 70170, 'Stuttgart', 'Opernplatz', '7d')`;
+  var dummyAddress3 = `('Deutschland', 32897, 'München', 'Leibnizweg', '1A')`;
+  var dummyAddress4 = `('Deutschland', 90143, 'Ostpreußen', 'Fliederweg', '4')`;
+  await conn.query(addressInsertionQuery + dummyAddress1 + ',' + dummyAddress2 + ',' + dummyAddress3 + ',' + dummyAddress4 + ';');
+
+  var customerInsertionQuery = `INSERT INTO customer (firstName, lastName, addressID, email, telefone) VALUES `;
+  var dummyCustomer1= `('Hans', 'Gerster', 1, 'N/A', 'N/A')`;
+  var dummyCustomer2 = `('Jürger', 'Dietrich', 2, 'N/A', '01984382453')`;
+  await conn.query(customerInsertionQuery + dummyCustomer1 + ',' + dummyCustomer2 + ';');
+
+  var winemakerInsertionQuery = `INSERT INTO winemaker (firstName, lastName, addressID, email, telefone, pricelist) VALUES `;
+  var dummyWinemaker1= `('Jankick', 'Büchner', 3, 'KickMe@gmail.com', '0132486324', 'N/A')`;
+  var dummyWinemaker2 = `('Jobst', 'Stadtfeld', 4, 'N/A', 'N/A', 'N/A')`;
+  await conn.query(winemakerInsertionQuery + dummyWinemaker1 + ',' + dummyWinemaker2 + ';');
+
+  var transactionInsertionQuery = `INSERT INTO customer_buys_wine (wineID, customerID, quantity, date) VALUES `;
+  var dummyTransaction1= `(1, 1, 5, '01.04.2020')`;
+  var dummyTransaction2 = `(2, 1, 3, '19.05.2020')`;
+  var dummyTransaction3 = `(1, 2, 7, '28.02.2019')`;
+  await conn.query(transactionInsertionQuery + dummyTransaction1 + ',' + dummyTransaction2 + ',' + dummyTransaction3 + ';');
+
+  var offerInsertionQuery = `INSERT INTO winemaker_offers_wine (wineID, winemakerID) VALUES `;
+  var dummyOffer1 = `(1, 1)`;
+  var dummyOffer2 = `(2, 2)`;
+  await conn.query(offerInsertionQuery + dummyOffer1 + ',' + dummyOffer2 + ';');
+
   
 } catch (err) {
   console.error(err);
@@ -110,136 +147,41 @@ try {
   return
 }
 
-
-    // db.query(winemakerTable, (err) => {
-    //   if (err) 
-    //     console.log("This error occured: " + err)
-    // });
-
-  // db.query(customer_buys_wineTable, (err) => {
-  //   if (err) 
-  //     console.log("This error occured: " + err)
-  // });
-
-  // db.query(winemaker_offers_wineTable, (err) => {
-  //   if (err) 
-  //     console.log("This error occured: " + err)
-  // });
-
-// create test entries
-
-// var query = ` INSERT INTO wine SET ?`;
-// var wineTemplate = 
-// { 
-//   quantity: 0, 
-//   description: '', 
-//   vintage: '2000', 
-//   location: '', 
-//   originCountry: '', 
-//   region: '', 
-//   buyingPrice: 0.0, 
-//   sellingPrice: 0.0, 
-//   storageID: '1A', 
-//   image: 'N/A' 
-// };
-
-// var wine1 = 
-// { 
-//   quantity: 10, 
-//   description: 'This wine is very tasty', 
-//   vintage: '2000', 
-//   location: 'mountain', 
-//   originCountry: 'France', 
-//   region: 'upper Hills', 
-//   buyingPrice: 5.0, 
-//   sellingPrice: 9.99, 
-//   storageID: '1AB', 
-//   image: 'N/A' 
-// };
-
-// db.query(query, wine1, (err) => {
-//   if (err) 
-//     console.log(err)
-// });
-
 }
 
 
-app.get("/makeTestEntries", (req, res) => {
-  var query = ` INSERT INTO wine SET ?`;
-  var wine1 = 
-  { 
-    quantity: 10, 
-    description: 'This wine is very tasty', 
-    vintage: '2000', 
-    location: 'mountain', 
-    originCountry: 'France', 
-    region: 'upper Hills', 
-    buyingPrice: 5.0, 
-    sellingPrice: 9.99, 
-    storageID: '1AB', 
-    image: 'N/A' 
-  };
 
-  db.query(query, wine1, (err) => {
-    if (err) 
-      console.log(err)
-  });
-  
-  res.send();
+app.get("/queryTestEntries", async (req, res) => {
+  conn = await pool.getConnection()
+  var query = `SELECT * FROM winemaker_offers_wine`;
+  var result = await conn.query(query);
+  if (conn) conn.release(); //release to pool
+  res.send(result)
 });
 
-app.get("/queryTestEntries", (req, res) => {
-  var query = `SELECT * FROM wine`;
-  
-  db.query(query, (err, result) => {
-    if (err) 
-      console.log(err)
-    console.log(result);
-    res.send(result);
-  });
+app.get("/makeTestEntries", async (req, res) => {
+  conn = await pool.getConnection()
+
+  var offerInsertionQuery = `INSERT INTO winemaker_offers_wine (wineID, winemakerID) VALUES `;
+  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID), PRIMARY KEY (offerID));`;
+
+  var dummyOffer1 = `(1, 1)`;
+  var dummyOffer2 = `(2, 2)`;
+
+  await conn.query(offerInsertionQuery + dummyOffer1 + ',' + dummyOffer2 + ';');
+
+  if (conn) conn.release(); //release to pool
+  res.send()
 });
 
-
-
-app.get("/fillTable", (req, res) => {
- // fill table
-  var query = 'INSERT INTO test SET ?';
-  var tableContent = {title:'test-title', text:'test-text'};
-  db.query(query, tableContent, (err, result) => {
-    if (err) 
-      console.log(err)
-    console.log(result);
-    res.send("one entry in test has been made");
-  });
-
-});
-
-app.get("/queryTable", (req, res) => {
-  // query table
-   var query = 'SELECT * FROM test';
-   db.query(query, (err, result) => {
-     if (err)
-       console.log(err)
-     console.log(result);
-     res.send("These results have been fetched: \n" + JSON.stringify(result));
-   });
-});
-  
-app.get("/createTable", (req, res) => {
-    var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, quantity int, description VARCHAR(255), vintage int, location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
-  
-     db.query(wineTable, (err, result) => {
-       if (err)
-         console.log(err)
-       console.log(result);
-       res.send();
-     });
-
+app.get("/createTable", async (req, res) => {
+  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (customerID) REFERENCES customer (customerID), quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
+  conn = await pool.getConnection()
+  await conn.query(customer_buys_wineTable)
+  if (conn) conn.release(); //release to pool
+  res.send()
 });
  
-
-
 
 
 app.get("/initializeDB", async (req, res) => {
