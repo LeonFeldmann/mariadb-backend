@@ -3,11 +3,10 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-
 var mariadb = require('mariadb');
-
-var indexRouter = require('./routes/index');
+var wineRouter = require('./routes/wine');
 var usersRouter = require('./routes/users');
+
 
 
 var app = express();
@@ -22,8 +21,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+// app.use('/wine', wineRouter);
+// app.use('/users', usersRouter);
 
 
 
@@ -40,10 +39,6 @@ var url = process.env.DATABASE_URL;
 // });
 
 const pool = mariadb.createPool("mariadb://root@mariadb/myapp");
-async () => {
-  db = await pool.getConnection();
-}
-
 
 async function asyncFunction() {
   let conn;
@@ -51,6 +46,8 @@ async function asyncFunction() {
  
     conn = await pool.getConnection();
     console.log("Connected successfully");
+    // require('./routes/wine')(app, pool);
+
     // const rows = await conn.query("SELECT 1 as val");
     // rows: [ {val: 1}, meta: ... ]
  
@@ -252,6 +249,186 @@ async function getAllTables(connection) {
   }
 }
 
+// wine routes
+app.get('/wine', async function(req, res) {
+  let conn;
+  var query = `SELECT * FROM wine`;
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+  // result.forEach(wine => {
+  //   delete wine['wineID']
+  // });
+});
+
+app.post('/wine', async function (req, res) {
+  let conn;
+  var data = req.body;
+//   var data = {
+//     name: 'testWine',
+//     quantity: 15,
+//     description: 'tasty McSchmasty',
+//     vintage: 2006,
+//     location: 'field',
+//     originCountry: 'France',
+//     region: 'bordeaux',
+//     buyingPrice: 4,
+//     sellingPrice: 8.99,
+//     storageID: '1AB',
+//     image: 'N/A'
+// };
+
+
+var query = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `
+var entry = "('" + data.name + "'," + data.quantity + ", '" + data.description + "', '" + data.vintage + "', '" + data.location + "', '" + data.originCountry + "', '" + data.region + "'," + data.buyingPrice + "," + data.sellingPrice + ",'" + data.storageID + "', '" + data.image + "');";
+
+// 'INSERT INTO test SET ?';
+
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query + entry);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.get('/wine/:id', async function(req, res) {
+  var wineID = req.params.id;
+  console.log(wineID);
+  let conn;
+  var query = "SELECT * FROM wine WHERE wineID = " + wineID + ";";
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+  // result.forEach(wine => {
+  //   delete wine['wineID']
+  // });
+});
+
+app.put('/wine/:id', async function(req, res) {
+  var wineID = req.params.id;
+  var data = req.body;
+  let conn;
+  //   var data = {
+//     name: 'testWine',
+//     quantity: 15,
+//     description: 'tasty McSchmasty',
+//     vintage: 2006,
+//     location: 'field',
+//     originCountry: 'France',
+//     region: 'bordeaux',
+//     buyingPrice: 4,
+//     sellingPrice: 8.99,
+//     storageID: '1AB',
+//     image: 'N/A'
+// };
+  var query = "UPDATE wine SET name = '" + data.name + "', quantity = " + data.quantity + ", description = '" + data.description + "', vintage = '" + data.vintage + "', location = '" + data.location + "', originCountry = '" + data.originCountry + "', region = '" + data.region + "', buyingPrice = " + data.buyingPrice + ", sellingPrice = " + data.sellingPrice + ", storageID = '" + data.storageID + "', image = '" + data.image + "' WHERE wineID = " + wineID + ";";
+  try {
+    conn = await pool.getConnection();
+    result = await conn.query(query);
+    res.send();
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.delete('/wine/:id', async function(req, res) {
+  var wineID = req.params.id;
+  let conn;
+  var query = "DELETE FROM wine WHERE wineID = " + wineID + ";";
+  try {
+    conn = await pool.getConnection();
+    result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+
+
+app.get('/', async function(req, res) {
+  
+
+  let conn;
+  var query = "";
+  try {
+    conn = await pool.getConnection();
+    
+    res.send();
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+
+
+
+app.get('/test', async function (req, res) {
+  let conn;
+  var table = 'CREATE TABLE test(title VARCHAR(255), text VARCHAR(255), id int AUTO_INCREMENT, PRIMARY KEY (id))';
+  var query = `INSERT INTO test SET ?`;
+  var tableContent = {title:'test-title', text:'test-text'};
+
+  try {
+    conn = await pool.getConnection();
+    await conn.query(table);
+    var result = await conn.query(query, tableContent);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+    res.send(result);
+  }
+});
+
+app.get("/fillTable", async (req, res) => {
+  db = await pool.getConnection();
+  // fill table
+   var query = 'INSERT INTO test SET ?';
+   var tableContent = {title:'test-title', text:'test-text'};
+   db.query(query, tableContent, (err, result) => {
+     if (err) 
+       console.log(err)
+     console.log(result);
+     res.send("one entry in test has been made");
+   });
+  });
+
 
 
 // catch 404 and forward to error handler
@@ -271,3 +448,4 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+// module.exports.pool = pool;
