@@ -8,7 +8,6 @@ var wineRouter = require('./routes/wine');
 var usersRouter = require('./routes/users');
 
 
-
 var app = express();
 
 // view engine setup
@@ -83,13 +82,13 @@ async function initializeDatabaseSchema(conn) {
 
   var addressTable = `CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));`;
 
-  var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), PRIMARY KEY (customerID), FOREIGN KEY (addressID) REFERENCES address(addressID));`;
+  var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), PRIMARY KEY (customerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
 
-  var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (addressID) REFERENCES address(addressID));`;
+  var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (addressID) REFERENCES address(addressID) ON DELETE CASCADE);`;
 
-  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (customerID) REFERENCES customer (customerID), quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
+  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
 
-  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID), FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID), PRIMARY KEY (offerID));`;
+  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE CASCADE, FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID) ON DELETE CASCADE, PRIMARY KEY (offerID));`;
 
 try {
 
@@ -115,7 +114,7 @@ try {
   var dummyAddress4 = `('Deutschland', 90143, 'Ostpreußen', 'Fliederweg', '4')`;
   await conn.query(addressInsertionQuery + dummyAddress1 + ',' + dummyAddress2 + ',' + dummyAddress3 + ',' + dummyAddress4 + ';');
 
-  var customerInsertionQuery = `INSERT INTO customer (firstName, lastName, addressID, email, telefone) VALUES `;
+  var customerInsertionQuery = `INSERT INTO customer (firstName, lastName, address_ID, email, telefone) VALUES `;
   var dummyCustomer1= `('Hans', 'Gerster', 1, 'N/A', 'N/A')`;
   var dummyCustomer2 = `('Jürger', 'Dietrich', 2, 'N/A', '01984382453')`;
   await conn.query(customerInsertionQuery + dummyCustomer1 + ',' + dummyCustomer2 + ';');
@@ -290,8 +289,6 @@ app.post('/wine', async function (req, res) {
 var query = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `
 var entry = "('" + data.name + "'," + data.quantity + ", '" + data.description + "', '" + data.vintage + "', '" + data.location + "', '" + data.originCountry + "', '" + data.region + "'," + data.buyingPrice + "," + data.sellingPrice + ",'" + data.storageID + "', '" + data.image + "');";
 
-// 'INSERT INTO test SET ?';
-
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query + entry);
@@ -375,10 +372,153 @@ app.delete('/wine/:id', async function(req, res) {
 });
 
 
+// customer routes
+app.get('/customer', async function(req, res) {
+  let conn;
+  var query = `SELECT * FROM customer`;
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
 
-app.get('/', async function(req, res) {
-  
+app.post('/customer', async function (req, res) {
+  let conn;
+  var data = req.body;
+//   var data = {
+//     name: 'testWine',
+//     quantity: 15,
+//     description: 'tasty McSchmasty',
+//     vintage: 2006,
+//     location: 'field',
+//     originCountry: 'France',
+//     region: 'bordeaux',
+//     buyingPrice: 4,
+//     sellingPrice: 8.99,
+//     storageID: '1AB',
+//     image: 'N/A'
+// };
+var addressID = 1;
+var addressQuery = `INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES `;
+var customerQuery = `INSERT INTO customer (firstName, lastName, addressID, email, telefone) VALUES `
+var entry = `(' ${data.firstName} ',' ${data.lastName} + ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ');`;
+var addressEntry = `(' ${data.originCountry} ',' ${data.zipC} + ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ');`;
 
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query + entry);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.get('/customer/:id', async function(req, res) {
+  var customerID = req.params.id;
+  let conn;
+  var query = "SELECT customerID, firstName, lastName, email, telefone, country, zipCode, city, street, houseNumber FROM customer JOIN address ON customer.address_ID = address.addressID WHERE customerID = " + customerID + ";"
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    delete result['addressID']
+    delete result['address_ID']
+
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.delete('/customer/:id', async function(req, res) {
+  var customerID = req.params.id;
+  let conn;
+  var query = "DELETE FROM customer WHERE customerID = " + customerID + ";";
+  try {
+    conn = await pool.getConnection();
+    result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+
+// winemaker routes
+app.get('/winemaker', async function(req, res) {
+  let conn;
+  var query = `SELECT * FROM winemaker`;
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.get('/winemaker/:id', async function(req, res) {
+  var winemakerID = req.params.id;
+  let conn;
+  var query = "SELECT * FROM winemaker WHERE winemakerID = " + winemakerID + ";";
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.delete('/winemaker/:id', async function(req, res) {
+  var winemakerID = req.params.id;
+  let conn;
+  var query = "DELETE FROM winemaker WHERE winemakerID = " + winemakerID + ";";
+  try {
+    conn = await pool.getConnection();
+    result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+
+
+
+
+
+app.post('/', async function(req, res) {
   let conn;
   var query = "";
   try {
@@ -393,9 +533,6 @@ app.get('/', async function(req, res) {
     if (conn) conn.release(); //release to pool
   }
 });
-
-
-
 
 app.get('/test', async function (req, res) {
   let conn;
