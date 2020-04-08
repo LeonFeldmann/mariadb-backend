@@ -86,7 +86,7 @@ async function initializeDatabaseSchema(conn) {
 
   var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
 
-  var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
+  var transactionTable = `CREATE TABLE transaction(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, price double, date VARCHAR(255), PRIMARY KEY (transactionID));`;
 
   var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE CASCADE, FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID) ON DELETE CASCADE, PRIMARY KEY (offerID));`;
 
@@ -97,8 +97,8 @@ try {
   await conn.query(addressTable);
   await conn.query(customerTable);
   await conn.query(winemakerTable);
-  await conn.query(customer_buys_wineTable)
-  await conn.query(winemaker_offers_wineTable)
+  await conn.query(transactionTable);
+  await conn.query(winemaker_offers_wineTable);
 
   // fill table with test values
   var wineInsertionQuery = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `;
@@ -124,10 +124,10 @@ try {
   var dummyWinemaker2 = `('Jobst', 'Stadtfeld', 4, 'N/A', 'N/A', 'N/A')`;
   await conn.query(winemakerInsertionQuery + dummyWinemaker1 + ',' + dummyWinemaker2 + ';');
 
-  var transactionInsertionQuery = `INSERT INTO customer_buys_wine (wineID, customerID, quantity, date) VALUES `;
-  var dummyTransaction1= `(1, 1, 5, '01.04.2020')`;
-  var dummyTransaction2 = `(2, 1, 3, '19.05.2020')`;
-  var dummyTransaction3 = `(1, 2, 7, '28.02.2019')`;
+  var transactionInsertionQuery = `INSERT INTO transaction (wineID, customerID, quantity, price, date) VALUES `;
+  var dummyTransaction1= `(1, 1, 5, 9.99, '01.04.2020')`;
+  var dummyTransaction2 = `(2, 1, 3, 7.99, '19.05.2020')`;
+  var dummyTransaction3 = `(1, 2, 7, 9.99, '28.02.2019')`;
   await conn.query(transactionInsertionQuery + dummyTransaction1 + ',' + dummyTransaction2 + ',' + dummyTransaction3 + ';');
 
   var offerInsertionQuery = `INSERT INTO winemaker_offers_wine (wineID, winemakerID) VALUES `;
@@ -623,6 +623,74 @@ app.delete('/winemaker/:id', async function(req, res) {
 });
 
 
+// other routes
+app.post('/completePurchase', async function(req, res) {
+  var data = req.body;
+  // data = {
+  //   customerID: 1,
+  //   total: 31.95,
+  //   date: "01.02.2020",
+  //   wines: [{
+  //       wineID: 1,
+  //       price: 3.99,
+  //       quantity: 2
+  //     }, {
+  //       wineID: 2,
+  //       price: 7.99,
+  //       quantity: 3
+  //     }
+  //   ]
+  // };
+  let conn;
+  var wineQuantityResult;
+  var wineQuantity;
+  var remainingQuantity;
+  var updateQuantityQuery;
+  var transactionQuery = `INSERT INTO transaction (wineID, customerID, quantity, price, date) VALUES `;
+  var transactionEntry;
+
+  try {
+    conn = await pool.getConnection();
+
+    data.wines.forEach(async function (wine) {
+      var query = `SELECT quantity FROM wine WHERE wineID = '${wine.wineID}'`;
+      wineQuantityResult = await conn.query(query);
+      wineQuantity = wineQuantityResult[0].quantity;
+      if (wineQuantity < wine.quantity) {
+        throw "requested wine quantity higher than the quantity that is in store"
+      } else {
+        remainingQuantity = wineQuantity - wine.quantity;
+        updateQuantityQuery = `UPDATE wine SET quantity = ${remainingQuantity} WHERE wineID = ${wine.wineID}`;
+        await conn.query(updateQuantityQuery);
+        transactionEntry = `(' ${wine.wineID} ', ' ${data.customerID} ', ' ${wine.quantity} ', ' ${wine.price} ', ' ${data.date} ')`;
+        await conn.query(transactionQuery + transactionEntry)
+      }
+    });
+    res.send();
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.get('/transactions', async function(req, res) {
+  let conn;
+  var query = "SELECT * FROM transaction";
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
 
 
 
@@ -674,7 +742,6 @@ app.get("/fillTable", async (req, res) => {
      res.send("one entry in test has been made");
    });
   });
-
 
 
 // catch 404 and forward to error handler
