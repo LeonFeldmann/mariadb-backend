@@ -84,7 +84,7 @@ async function initializeDatabaseSchema(conn) {
 
   var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), PRIMARY KEY (customerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
 
-  var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), addressID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (addressID) REFERENCES address(addressID) ON DELETE CASCADE);`;
+  var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
 
   var customer_buys_wineTable = `CREATE TABLE customer_buys_wine(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, date VARCHAR(255), PRIMARY KEY (transactionID));`;
 
@@ -119,7 +119,7 @@ try {
   var dummyCustomer2 = `('Jürger', 'Dietrich', 2, 'N/A', '01984382453')`;
   await conn.query(customerInsertionQuery + dummyCustomer1 + ',' + dummyCustomer2 + ';');
 
-  var winemakerInsertionQuery = `INSERT INTO winemaker (firstName, lastName, addressID, email, telefone, pricelist) VALUES `;
+  var winemakerInsertionQuery = `INSERT INTO winemaker (firstName, lastName, address_ID, email, telefone, pricelist) VALUES `;
   var dummyWinemaker1= `('Jankick', 'Büchner', 3, 'KickMe@gmail.com', '0132486324', 'N/A')`;
   var dummyWinemaker2 = `('Jobst', 'Stadtfeld', 4, 'N/A', 'N/A', 'N/A')`;
   await conn.query(winemakerInsertionQuery + dummyWinemaker1 + ',' + dummyWinemaker2 + ';');
@@ -248,6 +248,7 @@ async function getAllTables(connection) {
   }
 }
 
+
 // wine routes
 app.get('/wine', async function(req, res) {
   let conn;
@@ -375,7 +376,7 @@ app.delete('/wine/:id', async function(req, res) {
 // customer routes
 app.get('/customer', async function(req, res) {
   let conn;
-  var query = `SELECT * FROM customer`;
+  var query = "SELECT customerID, firstName, lastName, email, telefone, country, zipCode, city, street, houseNumber FROM customer JOIN address ON customer.address_ID = address.addressID ;"
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query);
@@ -392,28 +393,29 @@ app.get('/customer', async function(req, res) {
 app.post('/customer', async function (req, res) {
   let conn;
   var data = req.body;
-//   var data = {
-//     name: 'testWine',
-//     quantity: 15,
-//     description: 'tasty McSchmasty',
-//     vintage: 2006,
-//     location: 'field',
-//     originCountry: 'France',
-//     region: 'bordeaux',
-//     buyingPrice: 4,
-//     sellingPrice: 8.99,
-//     storageID: '1AB',
-//     image: 'N/A'
-// };
-var addressID = 1;
+  // var data = {
+  //   "firstName": "Jo",
+  //   "lastName": "Biden",
+  //   "email": "N/A",
+  //   "telefone": "N/A",
+  //   "country": "US",
+  //   "zipCode": "00000",
+  //   "city": "Salt lake city",
+  //   "street": "Libtard street",
+  //   "houseNumber": "1"
+  //   };
+var addressID = 0;
 var addressQuery = `INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES `;
-var customerQuery = `INSERT INTO customer (firstName, lastName, addressID, email, telefone) VALUES `
-var entry = `(' ${data.firstName} ',' ${data.lastName} + ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ');`;
-var addressEntry = `(' ${data.originCountry} ',' ${data.zipC} + ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ');`;
+var customerQuery = `INSERT INTO customer (firstName, lastName, address_ID, email, telefone) VALUES `
+var addressEntry = `(' ${data.country} ',' ${data.zipCode} ', ' ${data.city} ', ' ${data.street} ', ' ${data.houseNumber} ');`;
 
   try {
     conn = await pool.getConnection();
-    var result = await conn.query(query + entry);
+    var result = await conn.query(addressQuery + addressEntry);
+    addressIDResult = await conn.query('SELECT LAST_INSERT_ID();');
+    addressID = addressIDResult[0]["LAST_INSERT_ID()"];
+    var customerEntry = `(' ${data.firstName} ',' ${data.lastName} ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ');`;
+    result = await conn.query(customerQuery + customerEntry);
     res.send(result);
   } catch (err) {
     console.error(err);
@@ -431,10 +433,43 @@ app.get('/customer/:id', async function(req, res) {
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query);
-    delete result['addressID']
-    delete result['address_ID']
-
     res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.put('/customer/:id', async function (req, res) {
+  var customerID = req.params.id;
+  let conn;
+  var data = req.body;
+  // var data = {
+  //   "firstName": "Hunter",
+  //   "lastName": "Biden",
+  //   "email": "N/A",
+  //   "telefone": "N/A",
+  //   "country": "US",
+  //   "zipCode": "00000",
+  //   "city": "Salt lake city",
+  //   "street": "Libtard alley",
+  //   "houseNumber": "1"
+  //   };
+var addressID = 0;
+var getAddressIDQuery = `SELECT Address_ID FROM customer WHERE customerID = ${customerID}`;
+var updateCustomerQuery = `UPDATE customer SET firstname = ' ${data.firstName} ', lastName = ' ${data.lastName} ', email = ' ${data.email} ', telefone = ' ${data.telefone} ' WHERE customerID = ${customerID}`;
+
+  try {
+    conn = await pool.getConnection();
+    var addressIDResult = await conn.query(getAddressIDQuery);
+    addressID = addressIDResult[0]["Address_ID"];
+    var updateAddressQuery = `UPDATE address SET country = ' ${data.country} ', zipCode = ' ${data.zipCode} ', city = ' ${data.city} ', street = ' ${data.street} ', houseNumber = ' ${data.houseNumber} ' WHERE addressID = ${addressID}`;
+    await conn.query(updateAddressQuery);
+    await conn.query(updateCustomerQuery);
+    res.send();
   } catch (err) {
     console.error(err);
     res.sendStatus(404);
@@ -465,10 +500,47 @@ app.delete('/customer/:id', async function(req, res) {
 // winemaker routes
 app.get('/winemaker', async function(req, res) {
   let conn;
-  var query = `SELECT * FROM winemaker`;
+  var query = "SELECT winemakerID, firstName, lastName, email, telefone, pricelist, country, zipCode, city, street, houseNumber FROM winemaker JOIN address ON winemaker.address_ID = address.addressID ;"
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.post('/winemaker', async function (req, res) {
+  let conn;
+  var data = req.body;
+  // var data = {
+  //   "firstName": "Wine",
+  //   "lastName": "&Vinos",
+  //   "email": "N/A",
+  //   "telefone": "N/A",
+  //   "pricelist": "N/A",
+  //   "country": "US & A",
+  //   "zipCode": "00069",
+  //   "city": "Wine lake city",
+  //   "street": "Winemaker street",
+  //   "houseNumber": 3
+  //   };
+var addressID = 0;
+var addressQuery = `INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES `;
+var winemakerQuery = `INSERT INTO winemaker (firstName, lastName, address_ID, email, telefone, pricelist) VALUES `
+var addressEntry = `(' ${data.country} ',' ${data.zipCode} ', ' ${data.city} ', ' ${data.street} ', ' ${data.houseNumber} ');`;
+
+  try {
+    conn = await pool.getConnection();
+    var result = await conn.query(addressQuery + addressEntry);
+    addressIDResult = await conn.query('SELECT LAST_INSERT_ID();');
+    addressID = addressIDResult[0]["LAST_INSERT_ID()"];
+    var winemakerEntry = `(' ${data.firstName} ',' ${data.lastName} ', ${addressID} , ' ${data.email} ', ' ${data.telefone} ', ' ${data.pricelist} ');`;
+    result = await conn.query(winemakerQuery + winemakerEntry);
     res.send(result);
   } catch (err) {
     console.error(err);
@@ -487,6 +559,43 @@ app.get('/winemaker/:id', async function(req, res) {
     conn = await pool.getConnection();
     var result = await conn.query(query);
     res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+    throw err;
+  } finally {
+    if (conn) conn.release(); //release to pool
+  }
+});
+
+app.put('/winemaker/:id', async function (req, res) {
+  var winemakerID = req.params.id;
+  let conn;
+  var data = req.body;
+  // data = {
+  //   "firstName": "Weine",
+  //   "lastName": "&Vinos",
+  //   "email": "N/A",
+  //   "telefone": "N/A",
+  //   "pricelist": "N/A",
+  //   "country": "US & A",
+  //   "zipCode": "00069",
+  //   "city": "Wine lake city",
+  //   "street": "Winemaker straße",
+  //   "houseNumber": 3
+  //   };
+var addressID = 0;
+var getAddressIDQuery = `SELECT Address_ID FROM winemaker WHERE winemakerID = ${winemakerID}`;
+var updateWinemakerQuery = `UPDATE winemaker SET firstname = ' ${data.firstName} ', lastName = ' ${data.lastName} ', email = ' ${data.email} ', telefone = ' ${data.telefone} ', pricelist = ' ${data.pricelist} ' WHERE winemakerID = ${winemakerID}`;
+
+  try {
+    conn = await pool.getConnection();
+    var addressIDResult = await conn.query(getAddressIDQuery);
+    addressID = addressIDResult[0]["Address_ID"];
+    var updateAddressQuery = `UPDATE address SET country = ' ${data.country} ', zipCode = ' ${data.zipCode} ', city = ' ${data.city} ', street = ' ${data.street} ', houseNumber = ' ${data.houseNumber} ' WHERE addressID = ${addressID}`;
+    await conn.query(updateAddressQuery);
+    await conn.query(updateWinemakerQuery);
+    res.send();
   } catch (err) {
     console.error(err);
     res.sendStatus(404);
