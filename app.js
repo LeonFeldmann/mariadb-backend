@@ -24,7 +24,7 @@ async function initializeDatabaseSchema(conn) {
 
 
   // define database schema
-  var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, description VARCHAR(255), vintage int, location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
+  var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, vintage VARCHAR(255), location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
 
   var addressTable = `CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));`;
 
@@ -34,8 +34,6 @@ async function initializeDatabaseSchema(conn) {
 
   var transactionTable = `CREATE TABLE transaction(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, price double, date VARCHAR(255), PRIMARY KEY (transactionID));`;
 
-  var winemaker_offers_wineTable = `CREATE TABLE winemaker_offers_wine(offerID int AUTO_INCREMENT, wineID int, winemakerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE CASCADE, FOREIGN KEY (winemakerID) REFERENCES winemaker (winemakerID) ON DELETE CASCADE, PRIMARY KEY (offerID));`;
-
 try {
 
   // initialize database schema
@@ -44,12 +42,12 @@ try {
   await conn.query(customerTable);
   await conn.query(winemakerTable);
   await conn.query(transactionTable);
-  await conn.query(winemaker_offers_wineTable);
+
 
   // fill table with test values
-  var wineInsertionQuery = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `;
-  var wine1Values = `('reserva especial de la mancha', 10, 'This wine is very tasty', '2000', 'upper Hills', 'Spain', 'la mancha', 5.0, 9.99, '1AA', 'N/A')`;
-  var wine2Values = `('renault peugeot baguette', 20, 'Also a very tasty wine', '2007', 'field', 'France', 'bordeaux', 3.0, 7.99, '1AB', 'N/A')`;
+  var wineInsertionQuery = `INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `;
+  var wine1Values = `('reserva especial de la mancha', 10, '2000', 'upper Hills', 'Spain', 'la mancha', 5.0, 9.99, '1AA', 'N/A')`;
+  var wine2Values = `('renault peugeot baguette', 20, '2007', 'field', 'France', 'bordeaux', 3.0, 7.99, '1AB', 'N/A')`;
   await conn.query(wineInsertionQuery + wine1Values + ',' + wine2Values + ';');
 
 
@@ -75,16 +73,11 @@ try {
   var dummyTransaction2 = `(2, 1, 3, 7.99, '19.05.2020')`;
   var dummyTransaction3 = `(1, 2, 7, 9.99, '28.02.2019')`;
   await conn.query(transactionInsertionQuery + dummyTransaction1 + ',' + dummyTransaction2 + ',' + dummyTransaction3 + ';');
-
-  var offerInsertionQuery = `INSERT INTO winemaker_offers_wine (wineID, winemakerID) VALUES `;
-  var dummyOffer1 = `(1, 1)`;
-  var dummyOffer2 = `(2, 2)`;
-  await conn.query(offerInsertionQuery + dummyOffer1 + ',' + dummyOffer2 + ';');
-
   
 } catch (err) {
   console.error(err);
   throw err;
+
 } finally {
   return
 }
@@ -225,7 +218,7 @@ function checkBodyForValidAttributes(req, res, next, attributes) {
 
 // wine routes
 // define attributes needed to add or modify a wine
-var wineAtrributes = ['name', 'quantity', 'description', 'vintage', 'location', 'originCountry', 'region', 'buyingPrice', 'sellingPrice', 'storageID', 'image'];
+var wineAtrributes = ['name', 'quantity', 'vintage', 'location', 'originCountry', 'region', 'buyingPrice', 'sellingPrice', 'storageID', 'image'];
 
 // route for receiving all wines currently in the database in an array
 app.get('/wine', async function(req, res) {
@@ -251,8 +244,8 @@ app.get('/wine', async function(req, res) {
 app.post('/wine', (req, res, next) => checkBodyForValidAttributes(req, res, next, wineAtrributes), async function (req, res) {
   let conn;
   var data = req.body;
-  var query = `INSERT INTO wine (name, quantity, description, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `
-  var entry = "('" + data.name + "'," + data.quantity + ", '" + data.description + "', '" + data.vintage + "', '" + data.location + "', '" + data.originCountry + "', '" + data.region + "'," + data.buyingPrice + "," + data.sellingPrice + ",'" + data.storageID + "', '" + data.image + "');";
+  var query = `INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `
+  var entry = "('" + data.name + "', '" + data.quantity + "', '" + data.vintage + "', '" + data.location + "', '" + data.originCountry + "', '" + data.region + "'," + data.buyingPrice + "," + data.sellingPrice + ",'" + data.storageID + "', '" + data.image + "');";
 
   try {
     conn = await pool.getConnection();
@@ -272,7 +265,7 @@ app.post('/wine', (req, res, next) => checkBodyForValidAttributes(req, res, next
 // route to receive the data of a specific wine specified by id
 app.get('/wine/:id', async function(req, res) {
   // check for valid wineID
-  if (!isInt(wineID) || 0 > wineID) {
+  if (!isInt(req.params.id) || 0 > req.params.id) {
     res.status(400).send('Invalid ID supplied');
     return
   }
@@ -314,7 +307,7 @@ app.put('/wine/:id', (req, res, next) => checkBodyForValidAttributes(req, res, n
   let conn;
   var wineID = req.params.id;
   var data = req.body;
-  var query = "UPDATE wine SET name = '" + data.name + "', quantity = " + data.quantity + ", description = '" + data.description + "', vintage = '" + data.vintage + "', location = '" + data.location + "', originCountry = '" + data.originCountry + "', region = '" + data.region + "', buyingPrice = " + data.buyingPrice + ", sellingPrice = " + data.sellingPrice + ", storageID = '" + data.storageID + "', image = '" + data.image + "' WHERE wineID = " + wineID + ";";
+  var query = "UPDATE wine SET name = '" + data.name + "', quantity = " + data.quantity + "', vintage = '" + data.vintage + "', location = '" + data.location + "', originCountry = '" + data.originCountry + "', region = '" + data.region + "', buyingPrice = " + data.buyingPrice + ", sellingPrice = " + data.sellingPrice + ", storageID = '" + data.storageID + "', image = '" + data.image + "' WHERE wineID = " + wineID + ";";
 
   try {
     conn = await pool.getConnection();
