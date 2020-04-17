@@ -213,7 +213,7 @@ function checkBodyForValidAttributes(req, res, next, attributes) {
     res.status(400).send('Invalid input (Required parameters in request body either not existing or undefined/empty)');
     res.send();
   }
-  }
+}
 
 
 // wine routes
@@ -232,7 +232,7 @@ app.get('/wine', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -250,11 +250,12 @@ app.post('/wine', (req, res, next) => checkBodyForValidAttributes(req, res, next
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query + entry);
-    res.send(result);
+    res.status(201).send('Entry was created');
+
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -288,7 +289,7 @@ app.get('/wine/:id', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -323,7 +324,7 @@ app.put('/wine/:id', (req, res, next) => checkBodyForValidAttributes(req, res, n
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -356,7 +357,7 @@ app.delete('/wine/:id', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -381,7 +382,7 @@ app.get('/customer', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -406,11 +407,11 @@ app.post('/customer', (req, res, next) => checkBodyForValidAttributes(req, res, 
     addressID = addressIDResult[0]["LAST_INSERT_ID()"];
     var customerEntry = `(' ${data.firstName} ',' ${data.lastName} ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ', ' ${data.newsletter} ');`;
     result = await conn.query(customerQuery + customerEntry);
-    res.send('Customer created');
+    res.status(201).send('Entry was created');
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -443,7 +444,7 @@ app.get('/customer/:id', async function(req, res) {
     res.send(result);
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -483,7 +484,7 @@ app.put('/customer/:id', (req, res, next) => checkBodyForValidAttributes(req, re
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -516,7 +517,7 @@ app.delete('/customer/:id', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -541,7 +542,7 @@ app.get('/winemaker', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -566,11 +567,11 @@ app.post('/winemaker', (req, res, next) => checkBodyForValidAttributes(req, res,
     addressID = addressIDResult[0]["LAST_INSERT_ID()"];
     var winemakerEntry = `(' ${data.firstName} ',' ${data.lastName} ', ${addressID} , ' ${data.email} ', ' ${data.telefone} ', ' ${data.pricelist} ');`;
     result = await conn.query(winemakerQuery + winemakerEntry);
-    res.send('Winemaker created');
+    res.status(201).send('Entry was created');
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -593,11 +594,18 @@ app.get('/winemaker/:id', async function(req, res) {
   try {
     conn = await pool.getConnection();
     var result = await conn.query(query);
+
+      // check if no result was returned -> winemaker was not found
+      if (result.length == 0) {
+        res.status(404).send('Winemaker not found');
+        return
+      }
+  
     res.send(result);
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -637,7 +645,7 @@ app.put('/winemaker/:id', (req, res, next) => checkBodyForValidAttributes(req, r
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -662,7 +670,7 @@ app.delete('/winemaker/:id', async function(req, res) {
     result = await conn.query(query);
      // check if a delete was executed, if not the winemakerID was not found
      if (result.affectedRows == 0) {
-      res.status(404).send('Customer not found');
+      res.status(404).send('Winemaker not found');
       return
     } else {
       res.send(result);
@@ -670,7 +678,7 @@ app.delete('/winemaker/:id', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.sendStatus(404);
+    res.sendStatus(500);
     throw err;
 
   } finally {
@@ -681,10 +689,10 @@ app.delete('/winemaker/:id', async function(req, res) {
 
 // other routes
 // define attributes needed to add a transaction
-var transactionAttributes= ['customerID', 'total', 'date', 'wines'];
+var transactionAttributes= ['wineID', 'customerID', 'quantity', 'price', 'date'];
 
 // route to add a purchase from a customer of one or more wines to the database
-app.post('/completePurchase', (req, res, next) => checkBodyForValidAttributes(req, res, next, transactionAttributes), async function(req, res) {
+app.post('/completePurchase', async function(req, res) {
   let conn;
   var data = req.body;
   var wineQuantityResult;
@@ -696,26 +704,26 @@ app.post('/completePurchase', (req, res, next) => checkBodyForValidAttributes(re
 
   try {
     conn = await pool.getConnection();
-    // calculate and update remaining quantity of wine for each wine mentioned in 'wines'
-    data.wines.forEach(async function (wine) {
-      var query = `SELECT quantity FROM wine WHERE wineID = '${wine.wineID}'`;
+    // calculate and update remaining quantity of wine for each wine transaction
+    data.forEach(async function (transaction) {
+      var query = `SELECT quantity FROM wine WHERE wineID = '${transaction.wineID}'`;
       wineQuantityResult = await conn.query(query);
       wineQuantity = wineQuantityResult[0].quantity;
-      if (wineQuantity < wine.quantity) {
+      if (wineQuantity < transaction.quantity) {
         throw "requested wine quantity higher than the quantity that is in store"
       } else {
-        remainingQuantity = wineQuantity - wine.quantity;
-        updateQuantityQuery = `UPDATE wine SET quantity = ${remainingQuantity} WHERE wineID = ${wine.wineID}`;
+        remainingQuantity = wineQuantity - transaction.quantity;
+        updateQuantityQuery = `UPDATE wine SET quantity = ${remainingQuantity} WHERE wineID = ${transaction.wineID}`;
         await conn.query(updateQuantityQuery);
-        transactionEntry = `(' ${wine.wineID} ', ' ${data.customerID} ', ' ${wine.quantity} ', ' ${wine.price} ', ' ${data.date} ')`;
+        transactionEntry = `(' ${transaction.wineID} ', ' ${transaction.customerID} ', ' ${transaction.quantity} ', ' ${transaction.price} ', ' ${transaction.date} ')`;
         await conn.query(transactionQuery + transactionEntry)
       }
     });
-    res.send('Transaction added successfully');
+    res.status(201).send('Entry was created');
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
@@ -735,7 +743,7 @@ app.get('/transactions', async function(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(404).send(err);
+    res.status(500).send(err);
     throw err;
 
   } finally {
