@@ -1,11 +1,11 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var mariadb = require('mariadb');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const mariadb = require('mariadb');
 
-var app = express();
+const app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -17,71 +17,62 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const pool = mariadb.createPool("mariadb://root@mariadb/myapp");
+const pool = mariadb.createPool('mariadb://root@mariadb/myapp');
 
 
 async function initializeDatabaseSchema(conn) {
-
-
   // define database schema
-  var wineTable = `CREATE TABLE wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, vintage VARCHAR(255), location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));`;
+  const wineTable = 'CREATE TABLE wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, vintage VARCHAR(255), location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));';
 
-  var addressTable = `CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));`;
+  const addressTable = 'CREATE TABLE address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));';
 
-  var customerTable = `CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), newsletter int, PRIMARY KEY (customerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
+  const customerTable = 'CREATE TABLE customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), newsletter int, PRIMARY KEY (customerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);';
 
-  var winemakerTable = `CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);`;
+  const winemakerTable = 'CREATE TABLE winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);';
 
-  var transactionTable = `CREATE TABLE transaction(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, price double, date VARCHAR(255), PRIMARY KEY (transactionID));`;
+  const transactionTable = 'CREATE TABLE transaction(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, price double, date VARCHAR(255), PRIMARY KEY (transactionID));';
 
-try {
-
+  try {
   // initialize database schema
-  await conn.query(wineTable);
-  await conn.query(addressTable);
-  await conn.query(customerTable);
-  await conn.query(winemakerTable);
-  await conn.query(transactionTable);
+    await conn.query(wineTable);
+    await conn.query(addressTable);
+    await conn.query(customerTable);
+    await conn.query(winemakerTable);
+    await conn.query(transactionTable);
+
+    // fill table with test values
+    const wineInsertionQuery = 'INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES ';
+    const wineValue1 = '(\'reserva especial de la mancha\', 10, \'2000\', \'upper Hills\', \'Spain\', \'la mancha\', 5.0, 9.99, \'1AA\', \'N/A\')';
+    const wineValue2 = '(\'lluvia roja\', 20, \'2007\', \'field\', \'France\', \'bordeaux\', 3.0, 7.99, \'1AB\', \'N/A\')';
+    await conn.query(`${wineInsertionQuery + wineValue1}, ${wineValue2};`);
 
 
-  // fill table with test values
-  var wineInsertionQuery = `INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `;
-  var wine1Values = `('reserva especial de la mancha', 10, '2000', 'upper Hills', 'Spain', 'la mancha', 5.0, 9.99, '1AA', 'N/A')`;
-  var wine2Values = `('renault peugeot baguette', 20, '2007', 'field', 'France', 'bordeaux', 3.0, 7.99, '1AB', 'N/A')`;
-  await conn.query(wineInsertionQuery + wine1Values + ',' + wine2Values + ';');
+    const addressInsertionQuery = 'INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES ';
+    const dummyAddress1 = '(\'Deutschland\', 40807, \'Berlin\', \'Am Bunker\', \'8\')';
+    const dummyAddress2 = '(\'Deutschland\', 70170, \'Stuttgart\', \'Opernplatz\', \'7d\')';
+    const dummyAddress3 = '(\'Deutschland\', 32897, \'München\', \'Leibnizweg\', \'1A\')';
+    const dummyAddress4 = '(\'Deutschland\', 90143, \'Ostpreußen\', \'Fliederweg\', \'4\')';
+    await conn.query(`${addressInsertionQuery + dummyAddress1}, ${dummyAddress2}, ${dummyAddress3}, ${dummyAddress4};`);
 
+    const customerInsertionQuery = 'INSERT INTO customer (firstName, lastName, address_ID, email, telefone, newsletter) VALUES ';
+    const dummyCustomer1 = '(\'Hans\', \'Gerster\', 1, \'N/A\', \'N/A\', 0)';
+    const dummyCustomer2 = '(\'Jürger\', \'Dietrich\', 2, \'N/A\', \'01984382453\', 0)';
+    await conn.query(`${customerInsertionQuery + dummyCustomer1}, ${dummyCustomer2};`);
 
-  var addressInsertionQuery = `INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES `;
-  var dummyAddress1 = `('Deutschland', 40807, 'Berlin', 'Am Bunker', '8')`;
-  var dummyAddress2 = `('Deutschland', 70170, 'Stuttgart', 'Opernplatz', '7d')`;
-  var dummyAddress3 = `('Deutschland', 32897, 'München', 'Leibnizweg', '1A')`;
-  var dummyAddress4 = `('Deutschland', 90143, 'Ostpreußen', 'Fliederweg', '4')`;
-  await conn.query(addressInsertionQuery + dummyAddress1 + ',' + dummyAddress2 + ',' + dummyAddress3 + ',' + dummyAddress4 + ';');
+    const winemakerInsertionQuery = 'INSERT INTO winemaker (firstName, lastName, address_ID, email, telefone, pricelist) VALUES ';
+    const dummyWinemaker1 = '(\'Jankick\', \'Büchner\', 3, \'KickMe@gmail.com\', \'0132486324\', \'N/A\')';
+    const dummyWinemaker2 = '(\'Jobst\', \'Stadtfeld\', 4, \'N/A\', \'N/A\', \'N/A\')';
+    await conn.query(`${winemakerInsertionQuery + dummyWinemaker1},${dummyWinemaker2};`);
 
-  var customerInsertionQuery = `INSERT INTO customer (firstName, lastName, address_ID, email, telefone, newsletter) VALUES `;
-  var dummyCustomer1= `('Hans', 'Gerster', 1, 'N/A', 'N/A', 0)`;
-  var dummyCustomer2 = `('Jürger', 'Dietrich', 2, 'N/A', '01984382453', 0)`;
-  await conn.query(customerInsertionQuery + dummyCustomer1 + ',' + dummyCustomer2 + ';');
-
-  var winemakerInsertionQuery = `INSERT INTO winemaker (firstName, lastName, address_ID, email, telefone, pricelist) VALUES `;
-  var dummyWinemaker1= `('Jankick', 'Büchner', 3, 'KickMe@gmail.com', '0132486324', 'N/A')`;
-  var dummyWinemaker2 = `('Jobst', 'Stadtfeld', 4, 'N/A', 'N/A', 'N/A')`;
-  await conn.query(winemakerInsertionQuery + dummyWinemaker1 + ',' + dummyWinemaker2 + ';');
-
-  var transactionInsertionQuery = `INSERT INTO transaction (wineID, customerID, quantity, price, date) VALUES `;
-  var dummyTransaction1= `(1, 1, 5, 9.99, '01.04.2020')`;
-  var dummyTransaction2 = `(2, 1, 3, 7.99, '19.05.2020')`;
-  var dummyTransaction3 = `(1, 2, 7, 9.99, '28.02.2019')`;
-  await conn.query(transactionInsertionQuery + dummyTransaction1 + ',' + dummyTransaction2 + ',' + dummyTransaction3 + ';');
-  
-} catch (err) {
-  console.error(err);
-  throw err;
-
-} finally {
-  return
-}
-
+    const transactionInsertionQuery = 'INSERT INTO transaction (wineID, customerID, quantity, price, date) VALUES ';
+    const dummyTransaction1 = '(1, 1, 5, 9.99, \'01.04.2020\')';
+    const dummyTransaction2 = '(2, 1, 3, 7.99, \'19.05.2020\')';
+    const dummyTransaction3 = '(1, 2, 7, 9.99, \'28.02.2019\')';
+    await conn.query(`${transactionInsertionQuery + dummyTransaction1}, ${dummyTransaction2}, ${dummyTransaction3};`);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 }
 
 // development routes
@@ -183,30 +174,28 @@ async function getAllTables(connection) {
     console.error(err);
     throw err;
   } finally {
-    return tables
+    return tables;
   }
 }
 
-// utility functions 
+// utility functions
 
 // function used to check if a provided id is a number
 function isInt(value) {
-  return !isNaN(value) && 
-         parseInt(Number(value)) == value && 
-         !isNaN(parseInt(value, 10));
+  return !isNaN(value)
+    && parseInt(Number(value), 10) == value
+    && !isNaN(parseInt(value, 10));
 }
 
-// function used to determine if the request contains the attributes necessary for the operation/specified in attributes
+// determine if the request has attributes necessary for the operation specified in attributes
 function checkBodyForValidAttributes(req, res, next, attributes) {
   let requestWellComposed = true;
-  //console.log(attributes);
-  for (let i = 0; i < attributes.length; i++) {
-    if (!req.body.hasOwnProperty(attributes[i]) || req.body[attributes[i]] == null || req.body[attributes[i]] === '') {
+  for (let i = 0; i < attributes.length; i ++) {
+    if (!req.body.hasOwnProperty(attributes[i]) || req.body[attributes[i]] == null || req.body[attributes[i]] == '') {
       requestWellComposed = false;
       break;
     }
   }
-  //console.log("At the end of check function: " + requestWellFormulated);
   if (requestWellComposed) {
     next();
   } else {
@@ -218,150 +207,148 @@ function checkBodyForValidAttributes(req, res, next, attributes) {
 
 // wine routes
 // define attributes needed to add or modify a wine
-var wineAtrributes = ['name', 'quantity', 'vintage', 'location', 'originCountry', 'region', 'buyingPrice', 'sellingPrice', 'storageID', 'image'];
+const wineAttributes = ['name', 'quantity', 'vintage', 'location', 'originCountry', 'region', 'buyingPrice', 'sellingPrice', 'storageID', 'image'];
 
 // route for receiving all wines currently in the database in an array
-app.get('/wine', async function(req, res) {
+app.get('/wine', async (req, res) => {
   let conn;
-  var query = `SELECT * FROM wine`;
+  const query = 'SELECT * FROM wine';
 
   try {
+    // get database connection from pool, execute query and send result in response
     conn = await pool.getConnection();
-    var result = await conn.query(query);
+    const result = await conn.query(query);
     res.send(result);
-
   } catch (err) {
+    // report error in console for debugging and send error in response
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
-    if (conn) conn.release(); //release to pool
+    if (conn) conn.release(); // release connection to pool
   }
 });
 
-// route to add a wine to the database, middleware function to check if all attributes are present in the request
-app.post('/wine', (req, res, next) => checkBodyForValidAttributes(req, res, next, wineAtrributes), async function (req, res) {
+// add a wine to the database, middleware function to check if all attributes are present in request
+app.post('/wine', (req, res, next) => checkBodyForValidAttributes(req, res, next, wineAttributes), async (req, res) => {
   let conn;
-  var data = req.body;
-  var query = `INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES `
-  var entry = "('" + data.name + "', '" + data.quantity + "', '" + data.vintage + "', '" + data.location + "', '" + data.originCountry + "', '" + data.region + "'," + data.buyingPrice + "," + data.sellingPrice + ",'" + data.storageID + "', '" + data.image + "');";
+  const data = req.body;
+  // define sql query and value string
+  const query = 'INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES ';
+  const entry = `('${data.name}', '${data.quantity}', '${data.vintage}', '${data.location}', '${data.originCountry}', '${data.region}',${data.buyingPrice},${data.sellingPrice},'${data.storageID}', '${data.image}');`;
 
   try {
+    // get database connection from pool, execute query and send success message in response
     conn = await pool.getConnection();
-    var result = await conn.query(query + entry);
+    await conn.query(query + entry);
     res.status(201).send('Entry was created');
-
-
   } catch (err) {
+    // report error in console for debugging and send error in response
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
-    if (conn) conn.release(); //release to pool
+    if (conn) conn.release(); // release connection to pool
   }
 });
 
 // route to receive the data of a specific wine specified by id
-app.get('/wine/:id', async function(req, res) {
-  // check for valid wineID
-  if (!isInt(req.params.id) || 0 > req.params.id) {
+app.get('/wine/:id', async (req, res) => {
+  // check for valid wineID -> if not valid send error in response
+  if (!isInt(req.params.id) || req.params.id < 0) {
     res.status(400).send('Invalid ID supplied');
-    return
+    return;
   }
 
   let conn;
-  var wineID = req.params.id;
-  var query = "SELECT * FROM wine WHERE wineID = " + wineID + ";";
+  const wineID = req.params.id;
+  const query = `SELECT * FROM wine WHERE wineID = ${wineID};`;
 
   try {
+    // get connection from pool and execute query
     conn = await pool.getConnection();
-    var result = await conn.query(query);
+    const result = await conn.query(query);
 
-    // check if no result was returned -> wine was not found
-    if (result.length == 0) {
+    // check if no result was returned -> send error wine was not found
+    if (result.length === 0) {
       res.status(404).send('Wine not found');
-      return
-    } else {
-      res.send(result);
+      return;
     }
-
+    res.send(result);
   } catch (err) {
+    // report error in console for debugging and send error in response
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
-    if (conn) conn.release(); //release to pool
+    if (conn) conn.release(); // release connection to pool
   }
 });
 
-// route to modify a wine in the database specified by id, middleware function to check if all attributes are present in the request
-app.put('/wine/:id', (req, res, next) => checkBodyForValidAttributes(req, res, next, wineAtrributesArray), async function(req, res) {
-  // check for valid wineID
-  if (!isInt(req.params.id) || 0 > req.params.id) {
+// modify a wine in the database specified by id,
+// middleware function to check if all attributes are present in the request
+app.put('/wine/:id', (req, res, next) => checkBodyForValidAttributes(req, res, next, wineAttributes), async (req, res) => {
+  // check for valid wineID -> if not valid send error in response
+  if (!isInt(req.params.id) || req.params.id < 0) {
     res.status(400).send('Invalid ID supplied');
-    return
+    return;
   }
-
   let conn;
-  var wineID = req.params.id;
-  var data = req.body;
-  var query = "UPDATE wine SET name = '" + data.name + "', quantity = " + data.quantity + "', vintage = '" + data.vintage + "', location = '" + data.location + "', originCountry = '" + data.originCountry + "', region = '" + data.region + "', buyingPrice = " + data.buyingPrice + ", sellingPrice = " + data.sellingPrice + ", storageID = '" + data.storageID + "', image = '" + data.image + "' WHERE wineID = " + wineID + ";";
+  const wineID = req.params.id;
+  const data = req.body;
+  // define sql update query
+  const query = `UPDATE wine SET name = '${data.name}', quantity = '${data.quantity}', vintage = '${data.vintage}', location = '${data.location}', originCountry = '${data.originCountry}', region = '${data.region}', buyingPrice = ${data.buyingPrice}, sellingPrice = ${data.sellingPrice}, storageID = '${data.storageID}', image = '${data.image}' WHERE wineID = ${wineID};`;
 
   try {
+    // get connection from pool and execute query
     conn = await pool.getConnection();
-    result = await conn.query(query);
+    const result = await conn.query(query);
 
-    // check if an update was executed, if not the wineID was not found
-    if (result.affectedRows == 0) {
+    // check if an update was executed, if not send error in response
+    if (result.affectedRows === 0) {
       res.status(404).send('Wine not found');
-      return
-    } else {
-      res.send("Successful update");
+      return;
     }
-
+    res.send('Successful update"');
   } catch (err) {
+    // report error in console for debugging and send error in response
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
-    if (conn) conn.release(); //release to pool
+    if (conn) conn.release(); // release connection to pool
   }
 });
 
 // route to delete a wine from the database
-app.delete('/wine/:id', async function(req, res) {
-   // check for valid wineID
-   if (!isInt(req.params.id) || 0 > req.params.id) {
+app.delete('/wine/:id', async (req, res) => {
+  // check for valid wineID -> if not valid send error in response
+  if (!isInt(req.params.id) || req.params.id < 0) {
     res.status(400).send('Invalid ID supplied');
-    return
+    return;
   }
 
   let conn;
-  var wineID = req.params.id;
-  var query = "DELETE FROM wine WHERE wineID = " + wineID + ";";
+  const wineID = req.params.id;
+  const query = `DELETE FROM wine WHERE wineID = ${wineID};`;
 
   try {
+    // get connection from pool and execute query
     conn = await pool.getConnection();
-    result = await conn.query(query);
-    // check if a delete was executed, if not the wineID was not found
-    if (result.affectedRows == 0) {
+    const result = await conn.query(query);
+    // check if a delete was executed, if not send error in response
+    if (result.affectedRows === 0) {
       res.status(404).send('Wine not found');
-      return
-    } else {
-      res.send('Successful delete');
+      return;
     }
-
+    res.send('Successful delete');
   } catch (err) {
+    // report error in console for debugging and send error in response
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
-    if (conn) conn.release(); //release to pool
+    if (conn) conn.release(); // release connection to pool
   }
 });
 
@@ -573,7 +560,6 @@ app.post('/winemaker', (req, res, next) => checkBodyForValidAttributes(req, res,
     console.error(err);
     res.status(500).send(err);
     throw err;
-
   } finally {
     if (conn) conn.release(); //release to pool
   }
@@ -752,14 +738,13 @@ app.get('/transactions', async function(req, res) {
 });
 
 
-
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use((req, res, next) => {
   next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use((err, req, res, next) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -768,6 +753,5 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-
 
 module.exports = app;
