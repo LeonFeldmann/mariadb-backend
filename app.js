@@ -190,7 +190,7 @@ function isInt(value) {
 // determine if the request has attributes necessary for the operation specified in attributes
 function checkBodyForValidAttributes(req, res, next, attributes) {
   let requestWellComposed = true;
-  for (let i = 0; i < attributes.length; i ++) {
+  for (let i = 0; i < attributes.length; i++) {
     if (!req.body.hasOwnProperty(attributes[i]) || req.body[attributes[i]] == null || req.body[attributes[i]] == '') {
       requestWellComposed = false;
       break;
@@ -274,7 +274,7 @@ app.get('/wine/:id', async (req, res) => {
       res.status(404).send('Wine not found');
       return;
     }
-    res.send(result);
+    res.send(result[0]);
   } catch (err) {
     // report error in console for debugging and send error in response
     console.error(err);
@@ -428,7 +428,7 @@ app.get('/customer/:id', async function(req, res) {
       return
     }
 
-    res.send(result);
+    res.send(result[0]);
   } catch (err) {
     console.error(err);
     res.status(500).send(err);
@@ -569,7 +569,7 @@ app.post('/winemaker', (req, res, next) => checkBodyForValidAttributes(req, res,
 app.get('/winemaker/:id', async function(req, res) {
   let conn;
   var winemakerID = req.params.id;
-  var query = "SELECT * FROM winemaker WHERE winemakerID = " + winemakerID + ";";
+  var query = "SELECT winemakerID, firstname, lastname, email, telefone, pricelist, country, zipCode, city, street, houseNumber FROM winemaker JOIN address on winemaker.address_ID = address.addressID WHERE winemakerID = " + winemakerID + ";";
 
   // check for valid winemakerID
   if (!isInt(winemakerID) || 0 > winemakerID) {
@@ -587,7 +587,7 @@ app.get('/winemaker/:id', async function(req, res) {
         return
       }
   
-    res.send(result);
+    res.send(result[0]);
 
   } catch (err) {
     console.error(err);
