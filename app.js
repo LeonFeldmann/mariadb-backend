@@ -309,7 +309,7 @@ app.put('/wine/:id', (req, res, next) => checkBodyForValidAttributes(req, res, n
       res.status(404).send('Wine not found');
       return;
     }
-    res.send('Successful update"');
+    res.send('Successful update');
   } catch (err) {
     // report error in console for debugging and send error in response
     console.error(err);
@@ -355,7 +355,7 @@ app.delete('/wine/:id', async (req, res) => {
 
 // customer routes
 // define attributes neede to add or modify a customer
-var customerAttributes = ['firstName', 'lastName', 'email', 'telefone', 'newsletter', 'country', 'zipCode', 'city', 'street', 'houseNumber'];
+var customerAttributes = ['firstName', 'lastName', 'email', 'telefone', 'country', 'zipCode', 'city', 'street', 'houseNumber'];
 
 // route for receiving all customers currently in the database in an array
 app.get('/customer', async function(req, res) {
@@ -395,7 +395,6 @@ app.post('/customer', (req, res, next) => checkBodyForValidAttributes(req, res, 
     var customerEntry = `(' ${data.firstName} ',' ${data.lastName} ', ' ${addressID} ', ' ${data.email} ', ' ${data.telefone} ', ' ${data.newsletter} ');`;
     result = await conn.query(customerQuery + customerEntry);
     res.status(201).send('Entry was created');
-
   } catch (err) {
     console.error(err);
     res.status(500).send(err);
@@ -467,7 +466,7 @@ app.put('/customer/:id', (req, res, next) => checkBodyForValidAttributes(req, re
       res.status(404).send('Customer not found');
       return
     }
-    res.send('Customer updated');
+    res.send('Successful update');
 
   } catch (err) {
     console.error(err);
@@ -556,6 +555,7 @@ app.post('/winemaker', (req, res, next) => checkBodyForValidAttributes(req, res,
     result = await conn.query(winemakerQuery + winemakerEntry);
     res.status(201).send('Entry was created');
 
+
   } catch (err) {
     console.error(err);
     res.status(500).send(err);
@@ -627,7 +627,7 @@ app.put('/winemaker/:id', (req, res, next) => checkBodyForValidAttributes(req, r
       res.status(404).send('Winemaker not found');
       return
     }
-    res.send('Winemaker updated');
+    res.send('Successful update');
 
   } catch (err) {
     console.error(err);
