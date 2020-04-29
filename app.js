@@ -19,6 +19,68 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = mariadb.createPool('mariadb://root@mariadb/myapp');
 
+async function setupDB() {
+  const conn = await pool.getConnection();
+  // define database schema
+  const wineTable = 'CREATE TABLE IF NOT EXISTS wine(wineID int AUTO_INCREMENT, name VARCHAR(255), quantity int, vintage VARCHAR(255), location VARCHAR(255), originCountry VARCHAR(255), region VARCHAR(255), buyingPrice DOUBLE, sellingPrice DOUBLE, storageID VARCHAR(255), image VARCHAR(255), PRIMARY KEY (wineID));';
+
+  const addressTable = 'CREATE TABLE IF NOT EXISTS address(addressID int AUTO_INCREMENT, country VARCHAR(255), zipCode VARCHAR(255), city VARCHAR(255), street VARCHAR(255), houseNumber VARCHAR(255), PRIMARY KEY (addressID));';
+
+  const customerTable = 'CREATE TABLE IF NOT EXISTS customer(customerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), newsletter int, PRIMARY KEY (customerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);';
+
+  const winemakerTable = 'CREATE TABLE IF NOT EXISTS winemaker(winemakerID int AUTO_INCREMENT, firstName VARCHAR(255), lastName VARCHAR(255), address_ID int, email VARCHAR(255), telefone VARCHAR(255), pricelist VARCHAR(255), PRIMARY KEY (winemakerID), FOREIGN KEY (address_ID) REFERENCES address(addressID) ON DELETE CASCADE);';
+
+  const transactionTable = 'CREATE TABLE IF NOT EXISTS transaction(transactionID int AUTO_INCREMENT, wineID int, customerID int, FOREIGN KEY (wineID) REFERENCES wine (wineID) ON DELETE SET NULL, FOREIGN KEY (customerID) REFERENCES customer (customerID) ON DELETE SET NULL, quantity int, price double, date VARCHAR(255), PRIMARY KEY (transactionID));';
+
+  try {
+  // initialize database schema
+    const queryResult = await conn.query(wineTable);
+    await conn.query(addressTable);
+    await conn.query(customerTable);
+    await conn.query(winemakerTable);
+    await conn.query(transactionTable);
+
+    // fill table with test values if not initialized before
+    if (queryResult.warningStatus === 0) {
+      const wineInsertionQuery = 'INSERT INTO wine (name, quantity, vintage, location, originCountry, region, buyingPrice, sellingPrice, storageID, image) VALUES ';
+      const wineValue1 = '(\'reserva especial de la mancha\', 10, \'2000\', \'upper Hills\', \'Spain\', \'la mancha\', 5.0, 9.99, \'1AA\', \'N/A\')';
+      const wineValue2 = '(\'lluvia roja\', 20, \'2007\', \'field\', \'France\', \'bordeaux\', 3.0, 7.99, \'1AB\', \'N/A\')';
+      await conn.query(`${wineInsertionQuery + wineValue1}, ${wineValue2};`);
+
+      const addressInsertionQuery = 'INSERT INTO address (country, zipCode, city, street, houseNumber) VALUES ';
+      const dummyAddress1 = '(\'Deutschland\', 40807, \'Berlin\', \'Am Bunker\', \'8\')';
+      const dummyAddress2 = '(\'Deutschland\', 70170, \'Stuttgart\', \'Opernplatz\', \'7d\')';
+      const dummyAddress3 = '(\'Deutschland\', 32897, \'München\', \'Leibnizweg\', \'1A\')';
+      const dummyAddress4 = '(\'Deutschland\', 90143, \'Ostpreußen\', \'Fliederweg\', \'4\')';
+      await conn.query(`${addressInsertionQuery + dummyAddress1}, ${dummyAddress2}, ${dummyAddress3}, ${dummyAddress4};`);
+
+      const customerInsertionQuery = 'INSERT INTO customer (firstName, lastName, address_ID, email, telefone, newsletter) VALUES ';
+      const dummyCustomer1 = '(\'Hans\', \'Gerster\', 1, \'N/A\', \'N/A\', 0)';
+      const dummyCustomer2 = '(\'Jürger\', \'Dietrich\', 2, \'N/A\', \'01984382453\', 0)';
+      await conn.query(`${customerInsertionQuery + dummyCustomer1}, ${dummyCustomer2};`);
+
+      const winemakerInsertionQuery = 'INSERT INTO winemaker (firstName, lastName, address_ID, email, telefone, pricelist) VALUES ';
+      const dummyWinemaker1 = '(\'Jankick\', \'Büchner\', 3, \'KickMe@gmail.com\', \'0132486324\', \'N/A\')';
+      const dummyWinemaker2 = '(\'Jobst\', \'Stadtfeld\', 4, \'N/A\', \'N/A\', \'N/A\')';
+      await conn.query(`${winemakerInsertionQuery + dummyWinemaker1},${dummyWinemaker2};`);
+
+      const transactionInsertionQuery = 'INSERT INTO transaction (wineID, customerID, quantity, price, date) VALUES ';
+      const dummyTransaction1 = '(1, 1, 5, 9.99, \'01.04.2020\')';
+      const dummyTransaction2 = '(2, 1, 3, 7.99, \'19.05.2020\')';
+      const dummyTransaction3 = '(1, 2, 7, 9.99, \'28.02.2019\')';
+      await conn.query(`${transactionInsertionQuery + dummyTransaction1}, ${dummyTransaction2}, ${dummyTransaction3};`);
+
+    }
+
+  } catch (err) {
+    console.error(err);
+    throw err;
+  } finally {
+    if (conn) conn.release(); // release to pool
+  }
+}
+
+setupDB();
 
 async function initializeDatabaseSchema(conn) {
   // define database schema
@@ -81,7 +143,7 @@ app.get("/queryTestEntries", async (req, res) => {
   conn = await pool.getConnection()
   var query = `SELECT * FROM winemaker_offers_wine`;
   var result = await conn.query(query);
-  if (conn) conn.release(); //release to pool
+  if (conn) conn.release(); // release to pool
   res.send(result)
 });
 
@@ -107,15 +169,13 @@ app.get("/createTable", async (req, res) => {
   if (conn) conn.release(); //release to pool
   res.send()
 });
- 
-
 
 app.get("/initializeDB", async (req, res) => {
   conn = await pool.getConnection()
   await initializeDatabaseSchema(conn);
   var tables = await getAllTables(conn);
   if (conn) conn.release(); //release to pool
-  res.send(tables);
+  res.send("This route is deprecated and only used for test purposes. The Database will initialize automatically.");
 });
 
 app.get("/cleanDB", async (req, res) => {
@@ -147,7 +207,7 @@ app.get("/cleanDB", async (req, res) => {
     throw err;
   } finally {
     if (conn) conn.release(); //release to pool
-    res.send(remainingTables);
+    res.send("This route is deprecated and only used for test purposes. Warning you just deleted all tables & entries. To execute queries call initializeDB or restart db-server");
   }
 });
 
@@ -203,7 +263,6 @@ function checkBodyForValidAttributes(req, res, next, attributes) {
     res.send();
   }
 }
-
 
 // wine routes
 // define attributes needed to add or modify a wine
